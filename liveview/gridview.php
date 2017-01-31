@@ -119,7 +119,7 @@ class liveview_fraction {
     }
     public function get_fraction ($slot, $myresponse) {
         $myquestion = $this->dm->get_question($slot);
-        $response[0] = $myresponse[0];
+        $response[0] = 'no summary available';
         if (method_exists($myquestion, 'summarise_response')) {
             $response[0] = $myquestion->summarise_response($myresponse);
         }
