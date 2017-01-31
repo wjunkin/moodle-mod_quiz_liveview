@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * This script provides the IPAL spreadsheet view for the teacher.
+ * This script provides the quiz spreadsheet view for the teacher.
  *
  * @package    mod_quiz
  * @copyright  2016 W. F. Junkin, Eckerd College, http://www.eckerd.edu
@@ -26,6 +26,7 @@ require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 $id = optional_param('id', 0, PARAM_INT);
 $q = optional_param('q', 0, PARAM_INT);
 $evaluate = optional_param('evaluate', 0, PARAM_INT);
+$showkey = optional_param('showkey', 0, PARAM_INT);
 $mode = optional_param('mode', '', PARAM_ALPHA);
 
 if ($id) {
@@ -51,7 +52,7 @@ if ($id) {
     }
 }
 
-$url = new moodle_url('/mod/quiz/liveview/gridview.php', array('id' => $cm->id));
+$url = new moodle_url('/mod/quiz/liveview/gridview.php', array('id' => $cm->id, 'evaluate' => $evaluate, 'showkey' => $showkey));
 if ($mode !== '') {
     $url->param('mode', $mode);
 }
@@ -66,8 +67,7 @@ if (!(has_capability('mod/quiz:viewreports', $contextinstance))) {
     echo "\n<br />You must be authorized to access this site";
     exit;
 }
-$debug = 0;
-if ($debug) {echo "\n<br />The cm id for this quiz is ".$cm->id;}
+
 
 /**
  * Return the number of users who have submitted answers to this quiz instance.
@@ -81,10 +81,10 @@ function liveview_who_sofar_gridview($quizid) {
     $records = $DB->get_records('quiz_attempts', array('quiz' => $quizid));
 
     foreach ($records as $records) {
-        $answer[] = $records->userid;
+        $userid[] = $records->userid;
     }
-    if (isset($answer)) {
-        return(array_unique($answer));
+    if (isset($userid)) {
+        return(array_unique($userid));
     } else {
         return(null);
     }
@@ -104,10 +104,128 @@ function liveview_find_student_gridview($userid) {
 }
 
 echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"gridviewstyle.css\" />";
+
+/* A lot of this comes from the question/engine/questionusage.php script.
+**/
+class liveview_fraction {
+    public $dm;
+    public $id;
+    public function __construct($qubaid) {
+        $this->dm = question_engine::load_questions_usage_by_activity($qubaid);        
+    }
+
+    public function get_question($slot) {
+        return $this->dm->get_question($slot);
+    }
+    public function get_fraction ($slot, $myresponse) {
+        $myquestion = $this->dm->get_question($slot);
+        $response[0] = $myresponse[0];
+        if (method_exists($myquestion, 'summarise_response')) {
+            $response[0] = $myquestion->summarise_response($myresponse);
+        }
+        $response[1] = 'NA';
+        if (method_exists($myquestion, 'grade_response')
+            && is_callable(array($myquestion, 'grade_response'))) {
+            $grade = $myquestion->grade_response($myresponse);
+            if ($grade[0] == 0) {
+                $grade[0] = 0.001;// This is set so that the isset function returns a value of true.
+            }
+            $response[1] = $grade[0];
+        }
+        return $response;
+    }
+}
 $slots = liveviewslots($quizid);
 $question = liveviewquestion($slots);
+$quizattempts = $DB->get_records('quiz_attempts', array('quiz' => $quizid));
+// An array, quizattpt, that has all rows from the quiz_attempts table indexed by userid and value of the quizattemptid.
+$quizattpt = array();
+foreach ($quizattempts as $key => $quizattempt){
+    $quizattpt[$quizattempt->userid] = $quizattempt->uniqueid;// Getting the latest uniqueid for each user.
+}
+// These arrays, indexed by userid and questionid and either 'answer' or 'fraction' is the answer/fraction for that userid and questionid.
+$stanswers = array();
+$stfraction = array();
+foreach ($quizattpt as $usrid => $qubaid) {
+    $mydm = new liveview_fraction($qubaid);
+    $qattempts = $DB->get_records('question_attempts', array('questionusageid' => $qubaid));
+    foreach ($qattempts as $qattempt) {
+        $myresponse = array();
+        $qattemptsteps = $DB->get_records('question_attempt_steps', array('questionattemptid' => $qattempt->id));
+        foreach ($qattemptsteps as $qattemptstep) {
+            $answers = $DB->get_records('question_attempt_step_data', array('attemptstepid' => $qattemptstep->id));
+            foreach ($answers as $answer){
+                $myresponse[$answer->name] = $answer->value;
+            }
+            if (count($myresponse) > 0) {
+                $response = $mydm->get_fraction($qattempt->slot, $myresponse);
+                $stanswers[$usrid][$qattempt->questionid] = $response[0];
+                $stfraction[$usrid][$qattempt->questionid] = $response[1];
+            }
+        }
+    }
+}
 
-echo "<table border=\"1\" width=\"100%\">\n";
+/**
+ * Return the greatest time that a student responded to a given question in a quiz.
+ *
+ * This is used to determine if the teacher view of the graph should be refreshed.
+ * @param int $qid The ID for the question.
+ * @param int $quizcontextid The ID for the context for this quiz.
+ * @return int The integer for the greatest time.
+ */
+
+function liveviewquestionmaxtime($qid, $quizcontextid) {
+    global $DB;
+    $time = $DB->get_records_sql("
+        SELECT max(qa.timemodified) 
+        FROM {question_attempts} qa 
+        JOIN {question_usages} qu ON qu.id = qa.questionusageid 
+        WHERE qa.questionid = ? AND qu.contextid = ?", array($qid, $quizcontextid));
+    foreach ($time as $key => $tm){
+        $maxtime = $key;
+    }
+    return $maxtime;
+}
+/**
+ * Return the greatest time that a student responded to a given quiz.
+ *
+ * This is used to determine if the teacher view of the graph should be refreshed.
+ * @param int $quizcontextid The ID for the context for this quiz.
+ * @return int The integer for the greatest time.
+ */
+function liveviewquizmaxtime($quizcontextid) {
+    global $DB;
+    $quiztime = $DB->get_records_sql("
+        SELECT max(qa.timemodified) 
+        FROM {question_attempts} qa 
+        JOIN {question_usages} qu ON qu.id = qa.questionusageid 
+        WHERE qu.contextid = ?", array($quizcontextid));
+    foreach ($quiztime as $qkey => $qtm){
+        $qmaxtime = $qkey;
+    }
+    return $qmaxtime;
+}
+function liveviewshowkey() {
+    echo "Fraction colors\n<br />";
+    echo "<table border=\"1\" width=\"100%\">\n";
+    $head = "<tr>";
+    for ($i=0; $i<11; $i++) {
+        $myfraction = $i/10;
+        $head .= "<td ";
+        $greenpart = intval(127*$myfraction + 128);// Add in as much green as the answer is correct.
+        $redpart = 383 - $greenpart;// This is 255 - myfraction*127.
+        $head .= "style='background-color: rgb($redpart,$greenpart,126)'";
+        $head .= ">$myfraction</td>";
+    }
+    echo $head."\n</tr></table>\n<br />";
+}
+if ($showkey) {
+    liveviewshowkey();
+}
+$qmaxtime = liveviewquizmaxtime($quizcontextid);
+echo "Responses\n<br />";
+echo "<table border=\"1\" width=\"100%\" id='timemodified' name=$qmaxtime>\n";
 echo "<thead><tr>";
 
 // If anonymous, exclude the column "name" from the table.
@@ -148,194 +266,8 @@ function liveviewquestion($slots) {
     }
     return $question;
 }
-// Get a table of student answers so far.
-function liveview_student_answers($quizcontextid, $question) {
-    global $DB;
-    $stanswers = array();// Student answers by questionid by studentid.
-    $answers = array();// Correct answers by questionid and question_usage id.
-    $qtypevalue['truefalse'][0] = get_string('false', 'quiz');
-    $qtypevalue['truefalse'][1] = get_string('true', 'quiz');
-    // Question_usages: Every time anyone attempts a quiz the attempt gets a new questionusageid.
-    $questionusageids = $DB->get_records('question_usages', array('contextid' => $quizcontextid));
-    foreach ($questionusageids as $key => $qusage) {
-        // Question_attempts: Info about each question attempted: questionid, slot, questionsummary, and rightanswer.
-        $questionattempts = $DB->get_records('question_attempts', array('questionusageid' => $key));
-        foreach($questionattempts as $attemptid => $qvalue) {
-            // Question: Gives the qtype. Difference qtypes are handled differently.
-            //$question = $DB->get_record('question', array('id' => $qvalue->questionid));
-            //$qtype = $question->qtype;
-            $qtype = $question['qtype'][$qvalue->questionid];
-            $rightanswers[$qvalue->questionid] = $qvalue->rightanswer;
-            $studentanswers = $DB->get_records('question_attempt_steps', array('questionattemptid' => $qvalue->id));
-            foreach ($studentanswers as $skey => $sanswer) {
-/** I need to get all answers even when the answer has not been submitted completely.
-                if ($sanswer->state == 'todo') {
-                    $todoid = $sanswer->id; 
-                } else 
-*/
-                if ($sanswer_data = $DB->get_records('question_attempt_step_data', 
-                    array('attemptstepid' => $sanswer->id, 'name' => 'answer'))) {
-                    foreach ($sanswer_data as $akey => $sanswerdata) {
-                        if ($sanswerdata->name == 'answer') {// One of the qtypes where the value is the answer or the answer index.
-                            $stans[$sanswer->userid][$qvalue->questionid] = $sanswerdata->value;// The basic answer.
-                            if ($qtype == 'essay' || $qtype == 'shortanswer' || $qtype == 'calculated' || $qtype == 'calculatedsimple' || $qtype == 'numerical') {
-                                $stanswers[$sanswer->userid][$qvalue->questionid] = $sanswerdata->value;
-                            } else if ($qtype == 'truefalse') {
-                                $stanswers[$sanswer->userid][$qvalue->questionid] = $qtypevalue['truefalse'][$sanswerdata->value];
-                            } else if ($qtype == 'multichoice' || $qtype == 'calculatedmulti') {
-                                $query = "SELECT qasd.value FROM {question_attempt_step_data} qasd, {question_attempt_steps} qas
-                                    WHERE qasd.name = '_order' AND qasd.attemptstepid = qas.id AND qas.questionattemptid = ?";
-                                $myorder = $DB->get_record_sql($query, array($qvalue->id));
-                                $myanswers = explode(',', $myorder->value);
-                                //echo "\n<br />debug and qvalue->id is ".$qvalue->id." and myorder is ".print_r($myorder);
-                                // Get the array of various answers for this question type if it has various answers.
-/**                                if ($qorder = $DB->get_record('question_attempt_step_data', array('attemptstepid' => $todoid, 'name' => '_order'))) {
-                                    $myanswers = explode(',', $qorder->value);
-                                    $myanswer = $DB->get_record('question_answers', array('id' =>$myanswers[$sanswerdata->value]));
-                                    $stanswers[$sanswer->userid][$qvalue->questionid] = $myanswer->answer;
-                                    
-                                } else {
-                                    $myanswers = explode('; ', $qvalue->questionsummary);
-                                    if (isset($myanswers[$sanswerdata->value])) {
-                                        $stanswers[$sanswer->userid][$qvalue->questionid] = $myanswers[$sanswerdata->value];
-                                    } else {
-                                        $stanswers[$sanswer->userid][$qvalue->questionid] = $sanswerdata->value."NA qtype=".$qtype;
-                                    }
-*/
-                                if (isset($myanswers[$sanswerdata->value])) {
-                                    $myanswer = $DB->get_record('question_answers', array('id' =>$myanswers[$sanswerdata->value]));                                    
-                                    $stanswers[$sanswer->userid][$qvalue->questionid] = $myanswer->answer;
-                                } else {
-                                    $stanswers[$sanswer->userid][$qvalue->questionid] = $sanswerdata->value."NA qtype=".$qtype;
-                                }                                    
-                            }
-                        } else {
-                            $stanswers[$sanswer->userid][$qvalue->questionid] = "N//A qtype=".$qtype." and the first two characters are ".substr($qtype, 0, 2);
-                        }
-                    }
-                } else if ($sanswer_data = $DB->get_records('question_attempt_step_data', 
-                    array('attemptstepid' => $sanswer->id))) {
-                    foreach ($sanswer_data as $sanswerdata) {
-                        if (substr($qtype, 0, 2) == 'dd') {
-                            if (preg_match("/^[pc](\d+)/",$sanswerdata->name,$matches)) {
-                                    $stanswers[$sanswer->userid][$qvalue->questionid][$matches[1]] = $sanswerdata->value;
-                            }
-                        }
-                    }
 
-                } else {
-                    if (!(isset($stanswers[$sanswer->userid][$qvalue->questionid]))) {
-                        $stanswers[$sanswer->userid][$qvalue->questionid] = "N/A qtype=".$qtype;
-                    }
-                }
-            }
-        }
-    }
-        $result = array($stanswers, $rightanswers);
-        return $result;
-}
-class liveview_fraction {
-    public $dm;
-    public $id;
-    public function __construct($qubaid) {
-        $this->dm = question_engine::load_questions_usage_by_activity($qubaid);
-    }
-
-    public function get_id() {
-        $id = $this->dm->get_id();
-        return $id;
-    }
-    public function get_question($slot) {
-        return $this->dm->get_question($slot);
-    }
-    public function get_fraction ($slot, $answer) {
-        $myquestion = $this->dm->get_question($slot);
-        //$myresult = array('answer' => $answer);
-        $mygrade = $myquestion->grade_response(array('answer' => $answer));
-        return $mygrade[0];
-    }
-}
-function liveview_answer_fraction () {
-    return $fraction[$userid][$questionid];
-}
-$result = liveview_student_answers($quizcontextid, $question);
-$stanswers = $result[0];
-if ($evaluate) {
-    /* I have to get the 
-        student response (which comes from the question_attempt_step_data table,
-        It is $stans[$userid][$questionid] determined above.
-        userid (this can come from the question_attempt_step table)
-        the questionid.
-    **/
-    // Get the background color for all the questions and answers.
-    $qubaid = 4;
-    $mydm = new liveview_fraction($qubaid);
-    $myqas = $DB->get_records('question_attempts', array('questionusageid' => $qubaid));
-    foreach ($myqas as $myqa) {
-        $myslot = $myqa->slot;echo "\n<br />debug268 in gridview and myslot is $myslot";
-        $myquestionid = $myqa->questionid;
-        $mystudentid = 3;
-        $fraction[$mystudentid][$myquestionid] = null;
-    }
-    $rightanswer = $result[1];
-    function backgroundcolor ($slots, $stanswers, $users, $rightanswer, $question) {
-        global $DB;
-        $backgroundcolor = array();
-        $csscolor = array();
-        $csscolor['1'] = "style='background-color: #99ff99'";// Color for right answer.
-        $csscolor['0'] = "style='background-color: #ff9999'";// Color for wrong answer.
-        foreach ($slots as $questionid => $slot) {
-            foreach ($users as $userid) {
-                if (isset($stanswers[$userid][$questionid])) {// Only evalute answered questions.
-/** Get the fraction for graded question if grading is requested ($evaluate = 1).
-                switch($question['qtype'][$questionid]) {
-                        case 'essay':
-                            $backgroundcolor[$userid][$questionid] = "style='background-color: rgb(255,209,126)'";
-                            //$backgroundcolor[$userid][$questionid] = "style='background-color: #ffcc99'";
-                            break;
-                        case 'truefalse':
-                            if ($stanswers[$userid][$questionid] == $rightanswer[$questionid]) {
-                                $backgroundcolor[$userid][$questionid] = $csscolor['1'];
-                            } else {
-                                $backgroundcolor[$userid][$questionid] = $csscolor['0'];
-                            }
-                            break;
-                        case 'multichoice':
-                            $mystanswer = $stanswers[$userid][$questionid];
-                            $fractionquery = "SELECT fraction FROM {question_answers} WHERE question = $questionid AND ".$DB->sql_compare_text('answer')." = ?";
-                            if ($fractions = $DB->get_record_sql($fractionquery, array($mystanswer))) {
-                                $myfraction = $fractions->fraction;
-                                if (isset($csscolor["$myfraction"])) {
-                                    $backgroundcolor[$userid][$questionid] = $csscolor["$myfraction"];
-                                } else {
-                                    $greenpart = intval(127*$myfraction + 128);// Add in as much green as the answer is correct.
-                                    $redpart = 383 - $greenpart;// This is 255 - myfraction*127.
-                                    $backgroundcolor[$userid][$questionid] = "style='background-color: rgb($redpart,$greenpart,126)'";
-                                }
-                            } else {
-                                $backgroundcolor[$userid][$questionid] = '';
-                            }
-                            break;
-                        default:
-                            $backgroundcolor[$userid][$questionid] = '';
-                            break;
-                    }
-**/
-                    if (isset($fraction[$userid][$questionid])) {
-                        $myfraction = $fraction[$userid][$questionid];
-                        $greenpart = intval(127*$myfraction + 128);// Add in as much green as the answer is correct.
-                        $redpart = 383 - $greenpart;// This is 255 - myfraction*127.
-                        $backgroundcolor[$userid][$questionid] = "style='background-color: rgb($redpart,$greenpart,126)'";
-                    } else {
-                        $backgroundcolor[$userid][$questionid] = '';
-                    }
-                }
-            }
-        }
-    return $backgroundcolor;
-    }
-    $backgroundcolor = backgroundcolor($slots, $stanswers, $users, $rightanswer, $question);
-}
+// Create the table.
 if (isset($users)) {
     foreach ($users as $user) {
         echo "<tbody><tr>";
@@ -344,7 +276,6 @@ if (isset($users)) {
         if (!$quiz->anonymous) {
             echo "<td>".liveview_find_student_gridview($user)."</td>\n";
         }
-        //foreach ($questions as $question) {
         foreach ($slots as $questionid => $slotvalue) {
             if (($questionid != "") and ($questionid != 0)) {
                 if (isset($stanswers[$user][$questionid])) {
@@ -360,16 +291,61 @@ if (isset($users)) {
                     $answer = '&nbsp;';
                 }
             }
-//            echo "<td style='background-color: #ffcc99'>$answer</td>";
             echo "<td ";
             if ($evaluate) {
-                echo $backgroundcolor[$user][$questionid];
+                if (isset($stfraction[$user][$questionid]) and (!($stfraction[$user][$questionid] == 'NA'))) {
+                    $myfraction = $stfraction[$user][$questionid];
+                    $greenpart = intval(127*$myfraction + 128);// Add in as much green as the answer is correct.
+                    $redpart = 383 - $greenpart;// This is 255 - myfraction*127.
+                    echo "style='background-color: rgb($redpart,$greenpart,126)'";
+                } else {
+                    echo '';
+                }
             }
-            echo ">$answer</td>";
+            echo ">".$answer."</td>";
         }
         echo "</tr></tbody>\n";
     }
 }
-
 echo "</table>\n";
-echo "\n<br />finished";
+// Javascript to refresh the page if the contents of the table change.
+echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
+        \n\nif(navigator.appName == \"Microsoft Internet Explorer\")
+        {\nhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n} else {\nhttp = new XMLHttpRequest();}";
+    echo "\n\nfunction replace() { ";
+    $t = '&t='.time();
+    echo "\n x=document.getElementById('timemodified');";
+    echo "\n myname = x.getAttribute('name');";
+    echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$id.$t."\", true);";
+    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\nif(http.responseText != myname){";
+    echo "\n    location.reload(true);";
+    echo "\n}\n}\n}";
+    echo "\n http.send(null);";
+    echo "\n}\nreplace();";
+echo "\n</script>";
+
+/**
+ * Java script for checking to see if the chart need to be updated.
+ *
+ * @param int $id The cmid of this quiz instance.
+ */
+function quiz_java_graphupdate($id) {
+//    global $DB;
+    echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
+        \n\nif(navigator.appName == \"Microsoft Internet Explorer\")
+        {\nhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n} else {\nhttp = new XMLHttpRequest();}";
+    echo "\n\nfunction replace() { ";
+    $t = '&t='.time();
+    echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$id.$t."\", true);";
+    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\nif(http.responseText != x){";
+    echo "\nx=http.responseText;\n";
+//    $state = $DB->get_record('quiz', array('id' => $quizid));
+//    if ($state->preferredbehaviour == "Graph") {
+//        echo "document.getElementById('graphIframe').src=\"graphics.php?quizid=".$quizid."\"";
+//    } else {
+//        echo "document.getElementById('graphIframe').src=\"gridview.php?id=".$quizid."\"";
+//    }
+
+    echo "}\n}\n}\nhttp.send(null);\n}\nreplace();\n</script>";
+
+}
