@@ -326,7 +326,7 @@ echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
     echo "\n\nfunction replace() { ";
     $t = '&t='.time();
     echo "\n x=document.getElementById('timemodified');";
-    echo "\n myname = x.getAttribute('name');";//echo "\n alert('myname is ' + myname)";
+    echo "\n myname = x.getAttribute('name');";
     echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$id.$t."\", true);";
     echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\n if(parseInt(http.responseText) != parseInt(myname)){";
     echo "\n    location.reload(true);";
