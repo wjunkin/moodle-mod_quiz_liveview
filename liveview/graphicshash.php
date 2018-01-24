@@ -1,4 +1,4 @@
-<?php
+ <?php
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -31,7 +31,6 @@ $quiztime = $DB->get_records_sql("
     JOIN {question_usages} qu ON qu.id = qa.questionusageid 
     WHERE qu.contextid = ?", array($quizcontextid));
 foreach ($quiztime as $qkey => $qtm){
-    $qmaxtime = $qkey;
+    $qmaxtime = intval($qkey) +1;
 }
 echo $qmaxtime;
-

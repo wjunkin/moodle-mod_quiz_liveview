@@ -102,9 +102,10 @@ function liveview_find_student_gridview($userid) {
      $name = $user->lastname.", ".$user->firstname;
      return($name);
 }
-
+echo "\n<html>\n<head>";
+echo "\n<title>Live view spreadsheet</title>";
 echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"gridviewstyle.css\" />";
-
+echo "\n</head><body>";
 /* A lot of this comes from the question/engine/questionusage.php script.
 **/
 class liveview_fraction {
@@ -196,15 +197,15 @@ function liveviewquestionmaxtime($qid, $quizcontextid) {
  */
 function liveviewquizmaxtime($quizcontextid) {
     global $DB;
-    $quiztime = $DB->get_records_sql("
+	$quiztime = $DB->get_records_sql("
         SELECT max(qa.timemodified) 
         FROM {question_attempts} qa 
         JOIN {question_usages} qu ON qu.id = qa.questionusageid 
         WHERE qu.contextid = ?", array($quizcontextid));
     foreach ($quiztime as $qkey => $qtm){
-        $qmaxtime = $qkey;
+        $qmaxtime = intval($qkey) + 1;
     }
-    return $qmaxtime;
+	return $qmaxtime;
 }
 function liveviewshowkey() {
     echo "Fraction colors\n<br />";
@@ -224,6 +225,16 @@ if ($showkey) {
     liveviewshowkey();
 }
 $qmaxtime = liveviewquizmaxtime($quizcontextid);
+if ($evaluate) {
+	echo "<a href='./gridview.php?id=$id&q=$q&evaluate=0&showkey=$showkey'>Don't Grade answers</a>&nbsp";
+} else {
+	echo "<a href='./gridview.php?id=$id&q=$q&evaluate=1&showkey=$showkey'>Grade answers</a>&nbsp";
+}
+if ($showkey) {
+	echo "<a href='./gridview.php?id=$id&q=$q&evaluate=$evaluate&showkey=0'>Don't show grading key</a><br />\n";
+} else {
+	echo "<a href='./gridview.php?id=$id&q=$q&evaluate=$evaluate&showkey=1'>Show grading key</a><br />\n";
+}
 echo "Responses\n<br />";
 echo "<table border=\"1\" width=\"100%\" id='timemodified' name=$qmaxtime>\n";
 echo "<thead><tr>";
@@ -315,9 +326,9 @@ echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
     echo "\n\nfunction replace() { ";
     $t = '&t='.time();
     echo "\n x=document.getElementById('timemodified');";
-    echo "\n myname = x.getAttribute('name');";
+    echo "\n myname = x.getAttribute('name');";//echo "\n alert('myname is ' + myname)";
     echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$id.$t."\", true);";
-    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\nif(http.responseText != myname){";
+    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\n if(parseInt(http.responseText) != parseInt(myname)){";
     echo "\n    location.reload(true);";
     echo "\n}\n}\n}";
     echo "\n http.send(null);";
@@ -349,3 +360,4 @@ function quiz_java_graphupdate($id) {
     echo "}\n}\n}\nhttp.send(null);\n}\nreplace();\n</script>";
 
 }
+echo "\n</body></html>";
