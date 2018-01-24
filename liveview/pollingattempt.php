@@ -64,7 +64,7 @@ if ($attempt > 0) {
 	}
 	
 	if(!$ordered) {
-		$newlayout = implode(',0', $pages);//echo "\n<br />debug68 in pollingatttempt and exit";exit;
+		$newlayout = implode(',0', $pages);
 		$success1 = $DB->update_record('quiz_attempts', array('id' => $attempt, 'layout' => $newlayout));
 	}		
 
@@ -73,7 +73,6 @@ if ($attempt > 0) {
 $activequestion = $DB->get_record('quiz_active_questions', array('quiz_id' => $attemptobj->get_quizid()));
 if ($activequestion) {
 	// Send the appropriate question to the student.
-	//echo "\n<br />The active question is ".$activequestion->question_id;
 	$activepage = $DB->get_record('quiz_slots', array('quizid' => $attemptobj->get_quizid(), 'questionid' => $activequestion->question_id));
 	$nextpage = $activepage->page;
 	$page = $nextpage - 1;

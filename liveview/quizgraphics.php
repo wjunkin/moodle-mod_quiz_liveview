@@ -15,12 +15,12 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
  /**
- * Displays the quiz HIstogram or text resposes.
+ * Displays the quiz histogram or text resposes.
  *
  * An indicaton of # of responses to this question/# of student responding to this quiz instance is printed.
  * After that the histogram or the text responses are printed, depending on the question type.
  * @package    mod_ipal
- * @copyright  2012 W. F. Junkin, Eckerd College, http://www.eckerd.edu
+ * @copyright  2018 W. F. Junkin, Eckerd College, http://www.eckerd.edu
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -54,21 +54,6 @@ function quiz_show_current_question_id_graphics($quizid) {
 	} else if ($DB->record_exists('quiz_active_questions', array('quiz_id' => $quizid))) {
         $question = $DB->get_record('quiz_active_questions', array('quiz_id' => $quizid));
         return($question->question_id);
-    }
-    return(0);
-}
-
-/**
- * Return the id for the current question from the quiz_active_question table.
- *
- * @param int $quizid The ID for the quiz instance
- * @return int The ID for the current question.
- */
-function quiz_current_question_code($quizid) {
-    global $DB;
-    if ($DB->record_exists('quiz_active_questions', array('quiz_id' => $quizid))) {
-        $question = $DB->get_record('quiz_active_questions', array('quiz_id' => $quizid));
-        return($question->id);
     }
     return(0);
 }
@@ -127,32 +112,11 @@ function quiz_question_answers($quizid, $question_id) {
 							$stepid = $step->id;
 						}
 					}
-					/*
-					if ($question_data = $DB->get_records('question_attempt_step_data', array('attemptstepid' => $stepid, 'name' => 'answer'))) {
-						foreach ($question_data as $data) {
-							$answerdata[$userkey] = $data->value;
-						}
-					}
-					*/
 					if ($question_data = $DB->get_records('question_attempt_step_data', array('attemptstepid' => $stepid, 'name' => 'answer'))) {
 						$order = array();
 						$answer = '';
 						foreach ($question_data as $data) {
 							$answer = intval($data->value);
-							/*if ($data->name == '_order') {
-								$order = explode(',', $data->value);
-							} else if ((count($order) > 0) && ($data->name == 'answer')) {
-								$answerdata[$userkey] = $order[$data->value];echo "\n<br />debug113 and datavalue is ".$data-value." and exit";exit;
-							}*/
-						}
-						
-						if ($answer > -1) {// An answer to a multichoice question has been submitted.
-							if ($step_order = $DB->get_record('question_attempt_step_data', array('attemptstepid' => $orderid, 'name' => '_order'))) {
-								$order = explode(',', $step_order->value);
-								$answerdata[$userkey] = $order[$answer];
-							} else {
-								echo "\n<br />Error: Could not get the order of answers from the question_attempt_step_data table";exit;
-							}
 						}
 					}
 					 
@@ -208,7 +172,6 @@ function quiz_count_question_codes($quizid, $question_id) {
 	} else {
 		// Might be an essay question.
 		$myresult = quiz_question_answers($quizid, $questionid);
-		//echo "\n<br />debug178 in quizgraphics  and myresult is ".print_r($myresult)." and exit";exit;
 		return $myresult;
 	}
 }
@@ -219,8 +182,7 @@ echo "\n<html>\n<head><title>Quiz Graph</title>\n</head>\n<body>";
 $result = quiz_count_question_codes($quizid, $question_id);
 // The first member of the result array is a statement about how many have responded.
 echo $result[0];
-//echo "\n<br />debug187 and result is ".print_r($result);
-//exit;
+
 /**
  * A function to optain the question type of a given question.
  *
@@ -235,45 +197,9 @@ function quiz_get_question_type($questionid) {
     return($questiontype->qtype);
 }
 
-/**
- *  A function to display answers to essay questions.
- *
- * @param int $quizid The id of this quiz instance
- * @return array The essay answers to the active question.
- */
-function quiz_thistime_essay_answers($quizid, $questionid) {
-    global $DB;
-    $questioncode = quiz_current_question_code($quizid);
-    $answerids = $DB->get_records('ipal_answered', array('ipal_code' => $questioncode));
-    foreach ($answerids as $id) {
-        $answers[] = $id->a_text;
-    }
-    if (!(isset($answers[0]))) {
-        $answers[0] = "No answers yet";
-    }
-    return($answers);
-
-}
-
-/**
- *  A function to display answers to essay questions.
- *
- * @param int $ipalid The id of this IPAL instance
- * @return array The essay answers to the current question.
- */
-function ipal_display_essay_answers($ipalid) {
-    global $DB;
-    $questionid = ipal_show_current_question_id_graphics($ipalid);
-    $answerids = $DB->get_records('ipal_answered', array('question_id' => $questionid));
-    foreach ($answerids as $id) {
-        $answers[] = $id->a_text;
-    }
-    return($answers);
-}
-
 $qtype = quiz_get_question_type(quiz_show_current_question_id_graphics($quizid));
 if ($qtype == 'essay') {
-    $answers = $result[1];//quiz_thistime_essay_answers($quizid);
+    $answers = $result[1];
     foreach ($answers as $answer) {
         echo "\n<br />".strip_tags($answer);
     }

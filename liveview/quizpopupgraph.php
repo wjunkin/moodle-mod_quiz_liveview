@@ -45,33 +45,3 @@ if (!(has_capability('mod/quiz:manage', $contextinstance))) {
 }
 echo "<iframe id= \"graphIframe\" src=\"quizgraphics.php?quizid=".$quizid."\" height=\"540\" width=\"723\"></iframe>";
 echo "</body></html>";
-
-/**
- * Return the id for the current question
- *
- * @param obj $state The object giving information about the quiz instance.
- * @return int The ID for the current question.
- */
-/***function quiz_show_current_question_bool($state) {
-    global $DB;
-
-    $quiz = $state;
-    if ($DB->record_exists('quiz_active_questions', array('quiz_id' => $quiz->id))) {
-        $question = $DB->get_record('quiz_active_questions', array('quiz_id' => $quiz->id));
-        $questiontext = $DB->get_record('question', array('id' => $question->question_id));
-        // Removing any EJS from the quiz/view.php page. Note: A dot does not match a new line without the s option.
-        $questiontext->questiontext = preg_replace("/EJS<ejsquiz>.+<\/ejsquiz>/s", "EJS ", $questiontext->questiontext);
-        echo "The current question is -> ".strip_tags($questiontext->questiontext);
-        return(1);
-    } else {
-        return(0);
-    }
-}
-
-require_once('graphiframe.php');
-// Print out the graph.
-quiz_print_graph($quizid);
-?>
-</body>
-</html>
-**/

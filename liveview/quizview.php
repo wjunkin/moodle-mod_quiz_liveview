@@ -34,18 +34,6 @@ $id = optional_param('id', 0, PARAM_INT); // Course_module ID.
 $n  = optional_param('n', 0, PARAM_INT);  // Quiz instance ID - it should be named as the first character of the module.
 
 if ($id) {
-    //$cm         = get_coursemodule_from_id('ipal', $id, 0, false, MUST_EXIST);
-    //$cm         = get_coursemodule_from_id('ipal', $id, 0, false);
-/**	$coursemodule = $DB->get_record('course_modules', array('id' => $id));
-	$module = $DB->get_record('modules', array('id' => $coursemodule->module));
-	//echo "\n<br />debug40 in ipal/view and module is ".print_r($module);
-	//exit;
-	$modulename = $module->name;
-	if (($modulename != 'ipal') && ($modulename != 'quiz')) {
-		echo "\n<br />Error. This is neither a quiz nor an ipal instance.";
-		exit;
-    }
-**/	
 	$cm         = get_coursemodule_from_id('quiz', $id, 0, false, MUST_EXIST);
 	$course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
     $quiz  = $DB->get_record('quiz', array('id' => $cm->instance), '*', MUST_EXIST);
@@ -100,7 +88,6 @@ if (has_capability('mod/quiz:manage', $context)) {
 } else {
 	echo "\n<br />You are not authorized to view the teacher interface.";
 	exit;
-	//quiz_display_student_interface($ipal->id);// Not yet implemented.
 }
 
 // Make sure this is being used for in-class polling.

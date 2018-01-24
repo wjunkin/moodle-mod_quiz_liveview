@@ -54,13 +54,6 @@ function quiz_display_instructor_interface($cmid, $quizid) {
     echo "<table><tr><td>".quiz_instructor_buttons($quizid)."</td>";
 	echo "<td>&nbsp; &nbsp;<a href='".$CFG->wwwroot."/mod/quiz/edit.php?cmid=$cmid'>Add/Change Questions</a></td>";
 	echo "<td>&nbsp; &nbsp;<a href='".$CFG->wwwroot."/mod/quiz/liveview/gridview.php?id=$cmid' target = '_blank'>Quiz spreadsheet</a></td>";
-/** Mobile not supported right now
-    if ($state->mobile) {
-        $timecreated = $state->timecreated;
-        $ac = $state->id.substr($timecreated, strlen($timecreated) - 2, 2);
-        echo "<td>access code=$ac</td>";
-    }
-**/
     echo "</tr></table>";
     // Script to make the preview window a popout.
     echo "\n<script language=\"javascript\" type=\"text/javascript\">
@@ -89,18 +82,6 @@ function quiz_display_instructor_interface($cmid, $quizid) {
 				return false;\"
 				href=\"quizpopupgraph.php?quizid=".$quizid."\" target=\"_blank\">Open a new window for the graph.</a>";
 	}
-/**    } else {
-        echo "<br>";
-        echo "<br>";
-        echo "<iframe id= \"graphIframe\" src=\"gridview.php?id=".$ipalid.
-            "\" height=\"535\" width=\"723\"></iframe>";
-        echo "<br><br><a onclick=\"window.open('popupgraph.php?ipalid=".$ipalid."', '',
-                'width=620,height=450,toolbar=no,location=no,menubar=no,copyhistory=no,status=no,
-                directories=no,scrollbars=yes,resizable=yes');
-                return false;\"
-                href=\"popupgraph.php?ipalid=".$ipalid."\" target=\"_blank\">Open a new window for the graph.</a>";
-    }
-**/
 }
 
 /**
@@ -113,12 +94,6 @@ function quiz_clear_question($quizid) {
 
     if ($DB->record_exists('quiz_active_questions', array('quiz_id' => $quizid))) {
         $mybool = $DB->delete_records('quiz_active_questions', array('quiz_id' => $quizid));
-        /** Not implemented yet for the quiz.
-		$ipal = $DB->get_record('ipal', array('id' => $ipalid));
-        if (($ipal->mobile == 1) || ($ipal->mobile == 3)) {
-            ipal_refresh_firebase($ipalid);
-        }
-		**/
     }
 }
 
@@ -154,33 +129,6 @@ function quiz_show_current_question_id($quizid) {
     }
 }
 
-
-/**
- * Java script for checking to see if the chart need to be updated.
- *
- * @param int $quizid The id of this quiz instance.
- */
-function old_quiz_java_graphupdate($quizid,$cmid) {
-    global $DB;
-    echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
-        \n\nif(navigator.appName == \"Microsoft Internet Explorer\")
-        {\nhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n} else {\nhttp = new XMLHttpRequest();}";
-    echo "\n\nfunction replace() { ";
-    $t = '&t='.time();
-    echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?quizid=".$cmid.$t."\", true);";
-    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\nif(parseInt(http.responseText) != parseInt(x)){";
-	echo "\nx=http.responseText;\n";
-//    $state = $DB->get_record('quiz', array('id' => $quizid));
-//    if ($state->preferredbehaviour == "Graph") {
-        echo "document.getElementById('graphIframe').src=\"quizgraphics.php?quizid=".$quizid."\"";
-/** Only showing graphics in this version.
-    } else {
-        echo "document.getElementById('graphIframe').src=\"quizgridview.php?id=".$quizid."\"";
-    }
-**/
-    echo "}\n}\n}\nhttp.send(null);\n}\nreplace();\n</script>";
-
-}
 function quiz_java_graphupdate($quizid,$cmid) {
 	echo "\n<div id='timemodified' name='-1'></div>";
 	echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
@@ -189,7 +137,7 @@ function quiz_java_graphupdate($quizid,$cmid) {
 		echo "\n\nfunction replace() { ";
 		$t = '&t='.time();
 		echo "\n x=document.getElementById('timemodified');";
-		echo "\n myname = x.getAttribute('name');";//echo "\n alert('myname is ' + myname)";
+		echo "\n myname = x.getAttribute('name');";
 		
 		echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$cmid.$t."\", true);";
 		echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\n if(parseInt(http.responseText) != parseInt(myname)){";
@@ -241,7 +189,7 @@ function quiz_check_active_question($quizid) {
 }
 
 /**
- * Create Compadre button for the quiz edit interface.
+ * Create change/edit questions button for the quiz edit interface.
  * @param int $cmid The quiz id for this quiz instance.
  */
 function quiz_show_compadre($cmid) {
@@ -250,27 +198,6 @@ function quiz_show_compadre($cmid) {
     $myform .= "\n";
     $myform .= "<input type=\"submit\" value=\"Add/Change Questions\" />\n</form>\n";
     return($myform);
-}
-
-/**
- * Toggles the view between the graph or answers to the spreadsheet view.
- * @param string $newstate Gives the state to be displayed.
- */
-function quiz_toggle_view($newstate) {
-    $mycmid = optional_param('id', '0', PARAM_INT);// The cmid of the quiz instance.
-    if ($mycmid) {
-        $querystring = 'id='.$mycmid;
-    } else {
-        $querystring = '';
-    }
-
-    $myform = "<form action=\"?".$querystring."\" method=\"post\">\n";
-    $myform .= "\n";
-    $myform .= "<INPUT TYPE=hidden NAME=quiz_view VALUE=\"changeState\">";
-    $myform .= "Change View to <input type=\"submit\" value=\"$newstate\" name=\"gridView\"/>\n</form>\n";
-
-    return($myform);
-
 }
 
 /**
@@ -291,7 +218,6 @@ function quiz_make_instructor_form($quizid, $cmid) {
     }
 
     $myform = "<form action=\"?".$querystring."\" method=\"post\">\n";
-    $myform .= "\n";
     foreach (quiz_get_questions($quizid) as $items) {
         $previewurl = $CFG->wwwroot.'/question/preview.php?id='.
             $items['id'].'&cmid='.$cmid.
@@ -321,12 +247,6 @@ function quiz_get_questions($quizid) {
     global $CFG;
     $q = '';
     $pagearray2 = array();
-/** Not used because the quiz table doesn't have a questions field any more.
-    $quiz = $DB->get_record('quiz', array('id' => $quizid));
-
-    // Get the question ids.
-    $questions = explode(",", $ipal->questions);
-**/
 	$questions = array();
 	if($slots = $DB->get_records('quiz_slots', array('quizid' => $quizid))) {
 		foreach($slots as $slot){
@@ -340,22 +260,7 @@ function quiz_get_questions($quizid) {
         }
         $aquestions = $DB->get_record('question', array('id' => $q));
         if (isset($aquestions->questiontext)) {
-            // Removing any EJS from the ipal/view.php page. Note: A dot does not match a new line without the s option.
-            $aquestions->questiontext = preg_replace("/EJS<ejsipal>.+<\/ejsipal>/s", "EJS ", $aquestions->questiontext);
             $aquestions->questiontext = strip_tags($aquestions->questiontext);
-            /** Not implemented yet.
-			if (preg_match("/Attendance question for session (\d+)/", $aquestions->name, $matchs)) {
-                // Adding form to allow attendance update through ipal.
-                $attendancelink = "<input type='button' onclick=\"location.href='attendancerecorded_ipal.php?";
-                $attendancelink .= "ipalid=$ipalid";
-                $attendancelink .= "&qid=$q";
-                $sessid = $matchs[1];
-                $attendancelink .= "&sessid=$sessid";
-                $attendancelink .= "&update_record=Update_this_attendance_record';\" ";
-                $attendancelink .= "value='Update this attendance record'>\n<br />";
-                $aquestions->questiontext = $aquestions->questiontext.$attendancelink;
-            }
-            **/
 			$pagearray2[] = array('id' => $q, 'question' => $aquestions->questiontext,
                 'answers' => quiz_get_answers($q));
         }
@@ -402,19 +307,7 @@ function quiz_show_current_question($quizid) {
     if ($DB->record_exists('quiz_active_questions', array('quiz_id' => $quizid))) {
         $question = $DB->get_record('quiz_active_questions', array('quiz_id' => $quizid));
         $questiontext = $DB->get_record('question', array('id' => $question->question_id));
-        // Removing any EJS from the quiz/quiz_view.php page. Note: A dot does not match a new line without the s option.
-/**	EJS and Attendance not supported at this time.
-        $questiontext->questiontext = preg_replace("/EJS<ejsipal>.+<\/ejsipal>/s", "EJS ", $questiontext->questiontext);
-**/
         echo "The current question is -> ".strip_tags($questiontext->questiontext);
-/**
-        if (preg_match("/Attendance question for session \d+/", $questiontext->name, $matchs)) {
-            $ipal = $DB->get_record('ipal', array('id' => $ipalid));
-            $timecreated = $ipal->timecreated;
-            echo "\n<br /><br />The attendance code is ".
-                $question->question_id.$ipalid.substr($timecreated, strlen($timecreated) - 2, 2);
-        }
-**/
         return(1);
     } else {
         return(0);
@@ -444,9 +337,4 @@ function quiz_send_question($quizid) {
         $mybool = $DB->delete_records('quiz_active_questions', array('quiz_id' => $quiz->id));
     }
     $lastinsertid = $DB->insert_record('quiz_active_questions', $record);
-/** Firebase is not supported in this version
-    if (($ipal->mobile == 1) || ($ipal->mobile == 3)) {
-        ipal_refresh_firebase($ipalid);
-    }
-**/
 }
