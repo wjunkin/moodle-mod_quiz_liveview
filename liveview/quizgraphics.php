@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
  /**
- * Displays the quiz histogram or text resposes.
+ * Displays the quiz HIstogram or text resposes.
  *
  * An indicaton of # of responses to this question/# of student responding to this quiz instance is printed.
  * After that the histogram or the text responses are printed, depending on the question type.
@@ -118,6 +118,15 @@ function quiz_question_answers($quizid, $question_id) {
 						foreach ($question_data as $data) {
 							$answer = intval($data->value);
 						}
+						
+						if ($answer > -1) {// An answer to a multichoice question has been submitted.
+							if ($step_order = $DB->get_record('question_attempt_step_data', array('attemptstepid' => $orderid, 'name' => '_order'))) {
+								$order = explode(',', $step_order->value);
+								$answerdata[$userkey] = $order[$answer];
+							} else {
+								echo "\n<br />Error: Could not get the order of answers from the question_attempt_step_data table";exit;
+							}
+						}
 					}
 					 
 				}
@@ -196,6 +205,7 @@ function quiz_get_question_type($questionid) {
     $questiontype = $DB->get_record('question', array('id' => $questionid));
     return($questiontype->qtype);
 }
+
 
 $qtype = quiz_get_question_type(quiz_show_current_question_id_graphics($quizid));
 if ($qtype == 'essay') {
