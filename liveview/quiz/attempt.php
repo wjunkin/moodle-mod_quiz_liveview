@@ -130,15 +130,7 @@ if ($attemptobj->is_last_page($page)) {
     $nextpage = $page + 1;
 }
 if($DB->record_exists('quiz_sections', array('quizid' => $attemptobj->get_quizid(), 'shufflequestions' => 2))) {
-    if ($attemptobj->has_capability('mod/quiz:manage')) {
-        //redirect($attemptobj->review_url(null, $page));
-		redirect($CFG->wwwroot . "/mod/quiz/liveview/quizview.php?n=".$attemptobj->get_quizid());
-    }
-/*	if (has_capability('mod/quiz:manage', $context)) {
-		quiz_display_instructor_interface($cm->id, $quiz->id);
-	}*/
 	include_once('./liveview/pollingattempt.php');
-	echo quiz_java_questionupdate($attemptobj->get_quizid());
 }
 
 echo $output->attempt_page($attemptobj, $page, $accessmanager, $messages, $slots, $id, $nextpage);
