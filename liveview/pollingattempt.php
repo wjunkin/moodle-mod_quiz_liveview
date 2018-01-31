@@ -29,6 +29,14 @@ require_once(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
 require_once("$CFG->libdir/formslib.php");
 defined('MOODLE_INTERNAL') || die();
 
+if ($attemptobj->has_capability('mod/quiz:manage')) {
+	redirect($CFG->wwwroot . "/mod/quiz/liveview/quizview.php?n=".$attemptobj->get_quizid());
+	exit;
+} else {
+	// This person probably is a student.
+	echo quiz_java_questionupdate($attemptobj->get_quizid());
+}
+
 
 /**
  * Java script for checking to see if the Question has changed and refresh the student screen when polling has stopped or a question has been sent.
@@ -46,38 +54,41 @@ function quiz_java_questionupdate($quizid) {
     echo "}\nx=http.responseText;}\n}\nhttp.send(null);\nmyCount++;}\n\nreplace();\n</script>";
 }
 // Update the time of this attempt.
-$attempt = optional_param('attempt', 0, PARAM_INT);
-if ($attempt > 0) {
-	$success = $DB->update_record('quiz_attempts', array('id' => $attempt, 'timemodified' => time()));
-	// Check to be sure the pages are not shuffled.
-	$quizattempts = $DB->get_record('quiz_attempts', array('id' => $attempt));
+$attemptid = optional_param('attempt', 0, PARAM_INT);
+if ($attemptid > 0) {
+	$success = $DB->update_record('quiz_attempts', array('id' => $attemptid, 'timemodified' => time()));
+	$quizattempts = $DB->get_record('quiz_attempts', array('id' => $attemptid));
 	$layout = $quizattempts->layout;
-	$pages = explode(',0', $layout);
-	$ordered = true;
-	for ($n = 0; $n < count($pages) -1; $n++) {
-		$goodpage = $n + 1;
-		$pagevalue = trim($pages[$n], ",");
-		if ($pagevalue != $goodpage) {
-			$ordered = false;
-			$pages[$n] = preg_replace("/$pagevalue/", $goodpage, $pages[$n]);
-		}
-	}
-	
-	if(!$ordered) {
-		$newlayout = implode(',0', $pages);
-		$success1 = $DB->update_record('quiz_attempts', array('id' => $attempt, 'layout' => $newlayout));
-	}		
-
+	$pages = explode(',0,', $layout.",");
+	foreach ($attemptobj->get_slots() as $slot) {
+		$myslot = $DB->get_record('quiz_slots', array('quizid' => $attemptobj->get_quizid(), 'slot' => $slot));
+		$myquestionid = $myslot->questionid;
+		$questionpage[$myquestionid] = $myslot->page;
+		$questionslot[$myquestionid] = $slot;
+	}	
 }
 // Find out if a question has been sent.
 $activequestion = $DB->get_record('quiz_active_questions', array('quiz_id' => $attemptobj->get_quizid()));
+$myattempt = $DB->get_record('quiz_attempts', array('id' => $attemptid));
 if ($activequestion) {
-	// Send the appropriate question to the student.
-	$activepage = $DB->get_record('quiz_slots', array('quizid' => $attemptobj->get_quizid(), 'questionid' => $activequestion->question_id));
-	$nextpage = $activepage->page;
-	$page = $nextpage - 1;
-	$slots = array($activepage->slot);
+	// Getting the page number that will send the correct slot.
+	// The slot we want is $questionslot[$activequestion->question_id].
+	$myslot = $questionslot[$activequestion->question_id];
+	$page = -1;
+	for ($n = 0; $n < count($pages); $n++) {
+		$layoutpage = intval($pages[$n]);// Using inval because the explode of the layout may have commas.
+		if ($myslot == $layoutpage) {
+			$page = $n;
+		}
+	}
 	$pollingjavascript = quiz_java_questionupdate($attemptobj->get_quizid());
+	$slots = array($myslot);
+	if ($page > -1) {
+		$nexpage = $page -1;
+	} else {
+		echo "\n<br />Something is wrong since there was no page for the desired slot and questionid.";
+		exit;
+	}
 } else {
 	// Since no question has been sent or polling has stopped, send the "no active question" question to the student.
 	if ($pages = $DB->get_records('quiz_slots', array('quizid' => $attemptobj->get_quizid()))) {
