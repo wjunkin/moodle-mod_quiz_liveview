@@ -210,10 +210,12 @@ function quiz_make_instructor_form($quizid, $cmid) {
     global $CFG;
     global $PAGE;
 
-    $mycmid = optional_param('id', '0', PARAM_INT);// The cmid of the quiz instance.
+	$mycmid = optional_param('id', '0', PARAM_INT);// The cmid of the quiz instance.
     if ($mycmid) {
         $querystring = 'id='.$mycmid;
-    } else {
+    } else if ($cmid > 0) {
+		$querystring = 'id='.$cmid;
+	} else {
         $querystring = '';
     }
 
