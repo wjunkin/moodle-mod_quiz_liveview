@@ -80,6 +80,7 @@ function quiz_question_answers($quizid, $question_id) {
 	} else {
 		$question = $DB->get_record('quiz_active_questions', array('quiz_id' => $quizid));
 		$questionid = $question->question_id;
+		$questiontext = $DB->get_record('question', array('id' => $questionid));
 		$timesent = $question->timemodified;
 	}
 	$quizattempts = $DB->get_records('quiz_attempts', array('quiz' => $quizid));
@@ -113,18 +114,24 @@ function quiz_question_answers($quizid, $question_id) {
 						}
 					}
 					if ($question_data = $DB->get_records('question_attempt_step_data', array('attemptstepid' => $stepid, 'name' => 'answer'))) {
-						$order = array();
-						$answer = '';
-						foreach ($question_data as $data) {
-							$answer = intval($data->value);
-						}
-						
-						if ($answer > -1) {// An answer to a multichoice question has been submitted.
-							if ($step_order = $DB->get_record('question_attempt_step_data', array('attemptstepid' => $orderid, 'name' => '_order'))) {
-								$order = explode(',', $step_order->value);
-								$answerdata[$userkey] = $order[$answer];
-							} else {
-								echo "\n<br />Error: Could not get the order of answers from the question_attempt_step_data table";exit;
+						if ($questiontext->qtype == 'essay') {
+							foreach ($question_data as $data) {
+								$answerdata[$userkey] = $data->value;
+							}
+						} else {
+							$order = array();
+							$answer = '';
+							foreach ($question_data as $data) {
+								$answer = intval($data->value);
+							}
+							
+							if ($answer > -1) {// An answer to a multichoice question has been submitted.
+								if ($step_order = $DB->get_record('question_attempt_step_data', array('attemptstepid' => $orderid, 'name' => '_order'))) {
+									$order = explode(',', $step_order->value);
+									$answerdata[$userkey] = $order[$answer];
+								} else {								
+									echo "\n<br />Unable to get the answer from question_attempt_step_data table for user $userkey";exit;
+								}
 							}
 						}
 					}
