@@ -299,7 +299,7 @@ if (isset($users)) {
                         }
                     }
                 } else {
-                    $answer = '&nbsp;';
+                    $answer = ' ';
                 }
             }
             echo "<td ";
@@ -313,12 +313,19 @@ if (isset($users)) {
                     echo '';
                 }
             }
-            echo ">".$answer."</td>";
+            if (strlen($answer) < 40) {
+				echo ">".htmlentities($answer)."</td>";
+			} else {
+				// Making a tooltip out of a long answer. The htmlentities function leaves single quotes unchanged.
+				$safeanswer = htmlentities($answer);
+				echo "><div title=\"$safeanswer\">".substr(trim(strip_tags($answer)), 0, 40)."</div></td>";
+			}
         }
         echo "</tr></tbody>\n";
     }
 }
 echo "</table>\n";
+
 // Javascript to refresh the page if the contents of the table change.
 echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
         \n\nif(navigator.appName == \"Microsoft Internet Explorer\")
