@@ -118,6 +118,18 @@ function quiz_question_answers($quizid, $question_id) {
 							foreach ($question_data as $data) {
 								$answerdata[$userkey] = $data->value;
 							}
+						} else if ($questiontext->qtype == 'truefalse') {
+							$question_answers = $DB->get_records('question_answers', array('question' => $questionid));
+							foreach ($question_answers as $question_answer) {
+								if ($question_answer->answer == 'True') {
+									$myanswer[1] = $question_answer->id;
+								} else {
+									$myanswer[0] = $question_answer->id;
+								}
+							}
+							foreach ($question_data as $data) {
+								$answerdata[$userkey] = $myanswer[$data->value];
+							}
 						} else {
 							$order = array();
 							$answer = '';
