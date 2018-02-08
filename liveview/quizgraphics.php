@@ -146,6 +146,22 @@ function quiz_question_answers($quizid, $question_id) {
 								}
 							}
 						}
+					} else if ($question_data = $DB->get_records_sql('SELECT * FROM {question_attempt_step_data} 
+						WHERE attemptstepid = ? AND name LIKE ?', array( $stepid , 'choice%' ))) {
+						if ($step_order = $DB->get_record('question_attempt_step_data', array('attemptstepid' => $orderid, 'name' => '_order'))) {
+							unset($answerdata[$userkey]);
+							$order = explode(',', $step_order->value);
+							foreach ($question_data as $data) {
+								if (($data->value) && preg_match("/choice(\d+)/", $data->name, $matches)) {
+									if (isset($answerdata[$userkey])) {
+										$answerdata[$userkey] .= "&q&".$order[$matches[1]];
+									} else {
+										$answerdata[$userkey] = $order[$matches[1]];
+									}
+								}
+									
+							}
+						}
 					}
 					 
 				}
@@ -190,7 +206,15 @@ function quiz_count_question_codes($quizid, $question_id) {
 		$stdata = $myresult[1];
 		if (count($stdata) > 0) {
 			foreach ($stdata as $answersent) {
-				$data[$answersent] ++;
+				if (preg_match("/\&q\&/", $answersent)) {
+					// This is a multichoice question with more than one selection.
+					$multichoiceanswers = explode('&q&', $answersent);
+					foreach ($multichoiceanswers as $mcanswer) {
+						$data[$mcanswer] ++;
+					}
+				} else {
+					$data[$answersent] ++;
+				}
 			}
 		}
 		
