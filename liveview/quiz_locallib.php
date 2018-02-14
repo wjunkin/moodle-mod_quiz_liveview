@@ -21,7 +21,7 @@
  * All the quiz specific functions, needed to implement the module
  * logic, should go here. Never include this file from your lib.php!
  *
- * @package   mod_ipal_quiz
+ * @package   mod_quiz
  * @copyright 2017 Eckerd College
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -33,7 +33,7 @@ require_once(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
  * @param int $cmid The id for the course module for this quiz instance.
  * @param int $quizid The id of this quiz instance.
  */
-function quiz_display_instructor_interface($cmid, $quizid) { 
+function quiz_display_instructor_interface($cmid, $quizid) {
     global $DB;
     global $CFG;
 
@@ -45,15 +45,16 @@ function quiz_display_instructor_interface($cmid, $quizid) {
     }
     $state = $DB->get_record('quiz', array('id' => $quizid));
     $state->mobile = 0;// Mobile not implemented for quiz.
-	if ($sendquestionid) {
+    if ($sendquestionid) {
         quiz_send_question($quizid, $state->mobile);
     }
 
-    quiz_java_graphupdate($quizid,$cmid);
-	$state->mobile = 0;// Not implemented yet.
+    quiz_java_graphupdate($quizid, $cmid);
+    $state->mobile = 0;// Not implemented yet.
     echo "<table><tr><td>".quiz_instructor_buttons($quizid)."</td>";
-	echo "<td>&nbsp; &nbsp;<a href='".$CFG->wwwroot."/mod/quiz/edit.php?cmid=$cmid'>Add/Change Questions</a></td>";
-	echo "<td>&nbsp; &nbsp;<a href='".$CFG->wwwroot."/mod/quiz/liveview/gridview.php?id=$cmid' target = '_blank'>Quiz spreadsheet</a></td>";
+    echo "<td>&nbsp; &nbsp;<a href='".$CFG->wwwroot."/mod/quiz/edit.php?cmid=$cmid'>Add/Change Questions</a></td>";
+    echo "<td>&nbsp; &nbsp;";
+    echo "<a href='".$CFG->wwwroot."/mod/quiz/liveview/gridview.php?id=$cmid' target = '_blank'>Quiz spreadsheet</a></td>";
     echo "</tr></table>";
     // Script to make the preview window a popout.
     echo "\n<script language=\"javascript\" type=\"text/javascript\">
@@ -72,16 +73,16 @@ function quiz_display_instructor_interface($cmid, $quizid) {
     echo  quiz_make_instructor_form($quizid, $cmid);
     echo "<br><br>";
 
-	if (quiz_show_current_question($quizid) == 1) {
-		echo "<br>";
-		echo "<br>";
-		echo "<iframe id= \"graphIframe\" src=\"quizgraphics.php?quizid=".$quizid."\" height=\"540\" width=\"723\"></iframe>";
-		echo "<br><br><a onclick=\"newwindow=window.open('quizpopupgraph.php?quizid=".$quizid."', '',
-				'width=750,height=560,toolbar=no,location=no,menubar=no,copyhistory=no,status=no,";
-		echo "directories=no,scrollbars=yes,resizable=yes');
-				return false;\"
-				href=\"quizpopupgraph.php?quizid=".$quizid."\" target=\"_blank\">Open a new window for the graph.</a>";
-	}
+    if (quiz_show_current_question($quizid) == 1) {
+        echo "<br>";
+        echo "<br>";
+        echo "<iframe id= \"graphIframe\" src=\"quizgraphics.php?quizid=".$quizid."\" height=\"540\" width=\"723\"></iframe>";
+        echo "<br><br><a onclick=\"newwindow=window.open('quizpopupgraph.php?quizid=".$quizid."', '',
+                'width=750,height=560,toolbar=no,location=no,menubar=no,copyhistory=no,status=no,";
+        echo "directories=no,scrollbars=yes,resizable=yes');
+                return false;\"
+                href=\"quizpopupgraph.php?quizid=".$quizid."\" target=\"_blank\">Open a new window for the graph.</a>";
+    }
 }
 
 /**
@@ -129,25 +130,31 @@ function quiz_show_current_question_id($quizid) {
     }
 }
 
-function quiz_java_graphupdate($quizid,$cmid) {
-	echo "\n<div id='timemodified' name='-1'></div>";
-	echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
-			\n\nif(navigator.appName == \"Microsoft Internet Explorer\")
-			{\nhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n} else {\nhttp = new XMLHttpRequest();}";
-		echo "\n\nfunction replace() { ";
-		$t = '&t='.time();
-		echo "\n x=document.getElementById('timemodified');";
-		echo "\n myname = x.getAttribute('name');";
-		
-		echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$cmid.$t."\", true);";
-		echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\n if(parseInt(http.responseText) != parseInt(myname)){";
-		echo "\n    document.getElementById('graphIframe').src=\"quizgraphics.php?quizid=".$quizid."\"";
-		echo "\n x.setAttribute('name', http.responseText)";
-		echo "\n}\n}\n}";
-		echo "\n http.send(null);";
-		echo "\n}\nreplace();";
-	echo "\n</script>";
-	
+/**
+ * Prints out the javascript so that the display is updated whenever a student submits an answer.
+ *
+ * This is done by seeing if the most recent timemodified (supplied by graphicshash.php) has changed.
+ * @param int $quizid The id for this quiz.
+ * @param int $cmid The id in the course_modules table for this quiz.
+ */
+function quiz_java_graphupdate($quizid, $cmid) {
+    echo "\n<div id='timemodified' name='-1'></div>";
+    echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
+            \n\nif(navigator.appName == \"Microsoft Internet Explorer\")
+            {\nhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n} else {\nhttp = new XMLHttpRequest();}";
+        echo "\n\nfunction replace() { ";
+        $t = '&t='.time();
+        echo "\n x=document.getElementById('timemodified');";
+        echo "\n myname = x.getAttribute('name');";
+        echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$cmid.$t."\", true);";
+        echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {";
+        echo "\n if(parseInt(http.responseText) != parseInt(myname)){";
+        echo "\n    document.getElementById('graphIframe').src=\"quizgraphics.php?quizid=".$quizid."\"";
+        echo "\n x.setAttribute('name', http.responseText)";
+        echo "\n}\n}\n}";
+        echo "\n http.send(null);";
+        echo "\n}\nreplace();";
+    echo "\n</script>";
 }
 /**
  * Make the button controls on the instructor interface.
@@ -194,7 +201,7 @@ function quiz_check_active_question($quizid) {
  */
 function quiz_show_compadre($cmid) {
     global $CFG;
-	$myform = "<form action=\"".$CFG->wwwroot.'/mod/quiz/edit.php?cmid='.$cmid."\" method=\"post\">\n"; 
+    $myform = "<form action=\"".$CFG->wwwroot.'/mod/quiz/edit.php?cmid='.$cmid."\" method=\"post\">\n";
     $myform .= "\n";
     $myform .= "<input type=\"submit\" value=\"Add/Change Questions\" />\n</form>\n";
     return($myform);
@@ -210,12 +217,12 @@ function quiz_make_instructor_form($quizid, $cmid) {
     global $CFG;
     global $PAGE;
 
-	$mycmid = optional_param('id', '0', PARAM_INT);// The cmid of the quiz instance.
+    $mycmid = optional_param('id', '0', PARAM_INT);// The cmid of the quiz instance.
     if ($mycmid) {
         $querystring = 'id='.$mycmid;
     } else if ($cmid > 0) {
-		$querystring = 'id='.$cmid;
-	} else {
+        $querystring = 'id='.$cmid;
+    } else {
         $querystring = '';
     }
 
@@ -249,12 +256,12 @@ function quiz_get_questions($quizid) {
     global $CFG;
     $q = '';
     $pagearray2 = array();
-	$questions = array();
-	if($slots = $DB->get_records('quiz_slots', array('quizid' => $quizid))) {
-		foreach($slots as $slot){
-			$questions[] = $slot->questionid;
-		}
-	}
+    $questions = array();
+    if ($slots = $DB->get_records('quiz_slots', array('quizid' => $quizid))) {
+        foreach ($slots as $slot) {
+            $questions[] = $slot->questionid;
+        }
+    }
     // Get the questions and stuff them into an array.
     foreach ($questions as $q) {
         if (empty($q)) {
@@ -263,7 +270,7 @@ function quiz_get_questions($quizid) {
         $aquestions = $DB->get_record('question', array('id' => $q));
         if (isset($aquestions->questiontext)) {
             $aquestions->questiontext = strip_tags($aquestions->questiontext);
-			$pagearray2[] = array('id' => $q, 'question' => $aquestions->questiontext,
+            $pagearray2[] = array('id' => $q, 'question' => $aquestions->questiontext,
                 'answers' => quiz_get_answers($q));
         }
     }

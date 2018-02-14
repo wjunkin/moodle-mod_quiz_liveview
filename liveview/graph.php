@@ -17,7 +17,7 @@
 /**
  * Creates the IPAL HIstogram graph. It uses the param values and then uses the /lib/graphlib.php script.
  *
- * @package    mod_ipal
+ * @package    mod_quiz
  * @copyright  2012 W. F. Junkin, Eckerd College, http://www.eckerd.edu
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

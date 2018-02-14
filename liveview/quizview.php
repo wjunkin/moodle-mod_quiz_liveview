@@ -19,7 +19,7 @@
  * Prints a particular instance of quiz
  *
  *
- * @package   mod_quiz_liveview
+ * @package   mod_quiz
  * @copyright 2017 w. F. Junkin, Eckerd College (http://www.eckerd.edu)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -34,8 +34,8 @@ $id = optional_param('id', 0, PARAM_INT); // Course_module ID.
 $n  = optional_param('n', 0, PARAM_INT);  // Quiz instance ID - it should be named as the first character of the module.
 
 if ($id) {
-	$cm         = get_coursemodule_from_id('quiz', $id, 0, false, MUST_EXIST);
-	$course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+    $cm         = get_coursemodule_from_id('quiz', $id, 0, false, MUST_EXIST);
+    $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
     $quiz  = $DB->get_record('quiz', array('id' => $cm->instance), '*', MUST_EXIST);
 } else {
     if ($n) {
@@ -71,32 +71,32 @@ $PAGE->set_heading($course->shortname);
 $quizslots = $DB->get_records('quiz_slots', array('quizid' => $quiz->id));
 $slotpages = array();
 foreach ($quizslots as $quizslot) {
-	$slotpages[$quizslot->page] = 1;
+    $slotpages[$quizslot->page] = 1;
 }
 if (count($slotpages) != count($quizslots)) {
-	echo "<html><head></head><body>";
-	echo "In-class polling requires one page per question.";
-	echo "\n<br />You have ".count($quizslots)." questions and only ".count($slotpages)." pages.";
-	echo "\n<br />You must use the back button on your broswer and correct this before you can use this quiz for in-class polling.";
-	echo "</body></html>";
-	exit;
+    echo "<html><head></head><body>";
+    echo "In-class polling requires one page per question.";
+    echo "\n<br />You have ".count($quizslots)." questions and only ".count($slotpages)." pages.";
+    echo "\n<br />You must use the back button on your broswer and correct this before you can use this quiz for in-class polling.";
+    echo "</body></html>";
+    exit;
 }
-	
+
 echo $OUTPUT->header();
 if (has_capability('mod/quiz:manage', $context)) {
-	quiz_display_instructor_interface($cm->id, $quiz->id);
+    quiz_display_instructor_interface($cm->id, $quiz->id);
 } else {
-	echo "\n<br />You are not authorized to view the teacher interface.";
-	exit;
+    echo "\n<br />You are not authorized to view the teacher interface.";
+    exit;
 }
 
 // Make sure this is being used for in-class polling.
-$quiz_sections = $DB->get_record('quiz_sections', array('quizid' => $quiz->id));
-if ($quiz_sections->shufflequestions <> 2) {
-	$record = new stdClass();
-	$record->id = $quiz_sections->id;
-	$record->shufflequestions = 2;
-	$DB->update_record('quiz_sections', $record);
+$quizsections = $DB->get_record('quiz_sections', array('quizid' => $quiz->id));
+if ($quizsections->shufflequestions <> 2) {
+    $record = new stdClass();
+    $record->id = $quizsections->id;
+    $record->shufflequestions = 2;
+    $DB->update_record('quiz_sections', $record);
 }
 
 // Finish the page.

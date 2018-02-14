@@ -18,7 +18,7 @@
 /**
  * Page to display student answers to quiz questions
  *
- * @package    mod_quiz_liveview
+ * @package    mod_quiz
  * @copyright 2018 W. F. Junkin, Eckerd College (http://www.eckerd.edu)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

@@ -1,4 +1,4 @@
- <?php
+<?php
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -23,14 +23,17 @@
  */
 require_once('../../../config.php');
 $id = optional_param('id', 0, PARAM_INT);
+$cm = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
+$course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+require_login($course, true, $cm);
 $contextinstance = context_module::instance($id);
 $quizcontextid = $contextinstance->id;
 $quiztime = $DB->get_records_sql("
-    SELECT max(qa.timemodified) 
-    FROM {question_attempts} qa 
-    JOIN {question_usages} qu ON qu.id = qa.questionusageid 
+    SELECT max(qa.timemodified)
+    FROM {question_attempts} qa
+    JOIN {question_usages} qu ON qu.id = qa.questionusageid
     WHERE qu.contextid = ?", array($quizcontextid));
-foreach ($quiztime as $qkey => $qtm){
-    $qmaxtime = intval($qkey) +1;
+foreach ($quiztime as $qkey => $qtm) {
+    $qmaxtime = intval($qkey) + 1;
 }
 echo $qmaxtime;

@@ -106,18 +106,46 @@ echo "\n<html>\n<head>";
 echo "\n<title>Live view spreadsheet</title>";
 echo "<link rel=\"stylesheet\" type=\"text/css\" href=\"gridviewstyle.css\" />";
 echo "\n</head><body>";
-/* A lot of this comes from the question/engine/questionusage.php script.
-**/
+/**
+ * This class returns the fractional grade for students answers.
+ *
+ * For questions that can be graded by the computer program, it returns the fraction associated with
+ * the grade assigned to the answer the student has given.
+ * A lot of this comes from the question/engine/ scripts.
+ * @copyright  2016 W. F. Junkin, Eckerd College, http://www.eckerd.edu
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ **/
 class liveview_fraction {
+    /**
+     * @var question_engine_data_mapper $dm
+     */
     public $dm;
-    public $id;
+
+    /**
+     * Create a new instance of this class. This can be called directly.
+     *
+     * @param int $qubaid The id of from the question_useages table for this student.
+     */
     public function __construct($qubaid) {
-        $this->dm = question_engine::load_questions_usage_by_activity($qubaid);        
+        $this->dm = question_engine::load_questions_usage_by_activity($qubaid);
     }
 
+    /**
+     * Function to obtain the question from the slot value of the question.
+     *
+     * @param int $slot The id from the slot table of this question.
+     * @return The question object from the row in the question table.
+     */
     public function get_question($slot) {
         return $this->dm->get_question($slot);
     }
+    /**
+     * Function to return the graded responses to the question.
+     *
+     * @param int $slot The value of the id for this question in the slot table.
+     * @param string $myresponse The response that the student gave.
+     * @return real The fraction for the answer the student gave.
+     */
     public function get_fraction ($slot, $myresponse) {
         $myquestion = $this->dm->get_question($slot);
         $response[0] = 'no summary available';
@@ -141,10 +169,10 @@ $question = liveviewquestion($slots);
 $quizattempts = $DB->get_records('quiz_attempts', array('quiz' => $quizid));
 // An array, quizattpt, that has all rows from the quiz_attempts table indexed by userid and value of the quizattemptid.
 $quizattpt = array();
-foreach ($quizattempts as $key => $quizattempt){
+foreach ($quizattempts as $key => $quizattempt) {
     $quizattpt[$quizattempt->userid] = $quizattempt->uniqueid;// Getting the latest uniqueid for each user.
 }
-// These arrays, indexed by userid and questionid and either 'answer' or 'fraction' is the answer/fraction for that userid and questionid.
+// These arrays are the 'answr' or 'fraction' indexed by userid and questionid.
 $stanswers = array();
 $stfraction = array();
 foreach ($quizattpt as $usrid => $qubaid) {
@@ -155,7 +183,7 @@ foreach ($quizattpt as $usrid => $qubaid) {
         $qattemptsteps = $DB->get_records('question_attempt_steps', array('questionattemptid' => $qattempt->id));
         foreach ($qattemptsteps as $qattemptstep) {
             $answers = $DB->get_records('question_attempt_step_data', array('attemptstepid' => $qattemptstep->id));
-            foreach ($answers as $answer){
+            foreach ($answers as $answer) {
                 $myresponse[$answer->name] = $answer->value;
             }
             if (count($myresponse) > 0) {
@@ -175,15 +203,14 @@ foreach ($quizattpt as $usrid => $qubaid) {
  * @param int $quizcontextid The ID for the context for this quiz.
  * @return int The integer for the greatest time.
  */
-
 function liveviewquestionmaxtime($qid, $quizcontextid) {
     global $DB;
     $time = $DB->get_records_sql("
-        SELECT max(qa.timemodified) 
-        FROM {question_attempts} qa 
-        JOIN {question_usages} qu ON qu.id = qa.questionusageid 
+        SELECT max(qa.timemodified)
+        FROM {question_attempts} qa
+        JOIN {question_usages} qu ON qu.id = qa.questionusageid
         WHERE qa.questionid = ? AND qu.contextid = ?", array($qid, $quizcontextid));
-    foreach ($time as $key => $tm){
+    foreach ($time as $key => $tm) {
         $maxtime = $key;
     }
     return $maxtime;
@@ -197,24 +224,27 @@ function liveviewquestionmaxtime($qid, $quizcontextid) {
  */
 function liveviewquizmaxtime($quizcontextid) {
     global $DB;
-	$quiztime = $DB->get_records_sql("
-        SELECT max(qa.timemodified) 
-        FROM {question_attempts} qa 
-        JOIN {question_usages} qu ON qu.id = qa.questionusageid 
+    $quiztime = $DB->get_records_sql("
+        SELECT max(qa.timemodified)
+        FROM {question_attempts} qa
+        JOIN {question_usages} qu ON qu.id = qa.questionusageid
         WHERE qu.contextid = ?", array($quizcontextid));
-    foreach ($quiztime as $qkey => $qtm){
+    foreach ($quiztime as $qkey => $qtm) {
         $qmaxtime = intval($qkey) + 1;
     }
-	return $qmaxtime;
+    return $qmaxtime;
 }
+/**
+ * Function to display the color key when answer grades are shown.
+ */
 function liveviewshowkey() {
     echo "Fraction colors\n<br />";
     echo "<table border=\"1\" width=\"100%\">\n";
     $head = "<tr>";
-    for ($i=0; $i<11; $i++) {
-        $myfraction = $i/10;
+    for ($i = 0; $i < 11; $i++) {
+        $myfraction = $i / 10;
         $head .= "<td ";
-        $greenpart = intval(127*$myfraction + 128);// Add in as much green as the answer is correct.
+        $greenpart = intval(127 * $myfraction + 128);// Add in as much green as the answer is correct.
         $redpart = 383 - $greenpart;// This is 255 - myfraction*127.
         $head .= "style='background-color: rgb($redpart,$greenpart,126)'";
         $head .= ">$myfraction</td>";
@@ -226,14 +256,14 @@ if ($showkey) {
 }
 $qmaxtime = liveviewquizmaxtime($quizcontextid);
 if ($evaluate) {
-	echo "<a href='./gridview.php?id=$id&q=$q&evaluate=0&showkey=$showkey'>Don't Grade answers</a>&nbsp";
+    echo "<a href='./gridview.php?id=$id&q=$q&evaluate=0&showkey=$showkey'>Don't Grade answers</a>&nbsp";
 } else {
-	echo "<a href='./gridview.php?id=$id&q=$q&evaluate=1&showkey=$showkey'>Grade answers</a>&nbsp";
+    echo "<a href='./gridview.php?id=$id&q=$q&evaluate=1&showkey=$showkey'>Grade answers</a>&nbsp";
 }
 if ($showkey) {
-	echo "<a href='./gridview.php?id=$id&q=$q&evaluate=$evaluate&showkey=0'>Don't show grading key</a><br />\n";
+    echo "<a href='./gridview.php?id=$id&q=$q&evaluate=$evaluate&showkey=0'>Don't show grading key</a><br />\n";
 } else {
-	echo "<a href='./gridview.php?id=$id&q=$q&evaluate=$evaluate&showkey=1'>Show grading key</a><br />\n";
+    echo "<a href='./gridview.php?id=$id&q=$q&evaluate=$evaluate&showkey=1'>Show grading key</a><br />\n";
 }
 echo "Responses\n<br />";
 echo "<table border=\"1\" width=\"100%\" id='timemodified' name=$qmaxtime>\n";
@@ -255,7 +285,11 @@ foreach ($slots as $key => $slotvalue) {
 echo "</tr>\n</thead>\n";
 
 $users = liveview_who_sofar_gridview($quizid);
-// Get the questionids as the keys to the $slots array so we know all the questions in the quiz.
+/**
+ * Function to get the questionids as the keys to the $slots array so we know all the questions in the quiz.
+ * @param int $quizid The id for this quiz.
+ * @return array $slots The slot values (from the quiz_slots table) indexed by questionids.
+ */
 function liveviewslots($quizid) {
     global $DB;
     $slots = array();
@@ -265,7 +299,11 @@ function liveviewslots($quizid) {
     }
     return $slots;
 }
-// Get the qtype, name, questiontext for each question.
+/**
+ * Function to get the qtype, name, questiontext for each question.
+ * @param array $slots and array of slot ids indexed by question ids.
+ * @return array $question. A doubly indexed array giving qtype, qname, and qtext for the questions.
+ */
 function liveviewquestion($slots) {
     global $DB;
     $question = array();
@@ -306,7 +344,7 @@ if (isset($users)) {
             if ($evaluate) {
                 if (isset($stfraction[$user][$questionid]) and (!($stfraction[$user][$questionid] == 'NA'))) {
                     $myfraction = $stfraction[$user][$questionid];
-                    $greenpart = intval(127*$myfraction + 128);// Add in as much green as the answer is correct.
+                    $greenpart = intval(127 * $myfraction + 128);// Add in as much green as the answer is correct.
                     $redpart = 383 - $greenpart;// This is 255 - myfraction*127.
                     echo "style='background-color: rgb($redpart,$greenpart,126)'";
                 } else {
@@ -314,12 +352,12 @@ if (isset($users)) {
                 }
             }
             if (strlen($answer) < 40) {
-				echo ">".htmlentities($answer)."</td>";
-			} else {
-				// Making a tooltip out of a long answer. The htmlentities function leaves single quotes unchanged.
-				$safeanswer = htmlentities($answer);
-				echo "><div title=\"$safeanswer\">".substr(trim(strip_tags($answer)), 0, 40)."</div></td>";
-			}
+                echo ">".htmlentities($answer)."</td>";
+            } else {
+                // Making a tooltip out of a long answer. The htmlentities function leaves single quotes unchanged.
+                $safeanswer = htmlentities($answer);
+                echo "><div title=\"$safeanswer\">".substr(trim(strip_tags($answer)), 0, 40)."</div></td>";
+            }
         }
         echo "</tr></tbody>\n";
     }
@@ -335,7 +373,8 @@ echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
     echo "\n x=document.getElementById('timemodified');";
     echo "\n myname = x.getAttribute('name');";
     echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$id.$t."\", true);";
-    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\n if(parseInt(http.responseText) != parseInt(myname)){";
+    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {";
+    echo "\n if(parseInt(http.responseText) != parseInt(myname)){";
     echo "\n    location.reload(true);";
     echo "\n}\n}\n}";
     echo "\n http.send(null);";
@@ -348,7 +387,7 @@ echo "\n</script>";
  * @param int $id The cmid of this quiz instance.
  */
 function quiz_java_graphupdate($id) {
-//    global $DB;
+
     echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
         \n\nif(navigator.appName == \"Microsoft Internet Explorer\")
         {\nhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n} else {\nhttp = new XMLHttpRequest();}";
@@ -357,13 +396,6 @@ function quiz_java_graphupdate($id) {
     echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$id.$t."\", true);";
     echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\nif(http.responseText != x){";
     echo "\nx=http.responseText;\n";
-//    $state = $DB->get_record('quiz', array('id' => $quizid));
-//    if ($state->preferredbehaviour == "Graph") {
-//        echo "document.getElementById('graphIframe').src=\"graphics.php?quizid=".$quizid."\"";
-//    } else {
-//        echo "document.getElementById('graphIframe').src=\"gridview.php?id=".$quizid."\"";
-//    }
-
     echo "}\n}\n}\nhttp.send(null);\n}\nreplace();\n</script>";
 
 }
