@@ -57,9 +57,9 @@ if ($next) {
 }
 if ($page == -1) {
     $nexturl = $attemptobj->summary_url();
-	if($DB->record_exists('quiz_sections', array('quizid' => $attemptobj->get_quizid(), 'shufflequestions' => 2))) {
-		$nexturl = $attemptobj->attempt_url(null, $page);
-	}
+    if ($DB->record_exists('quiz_sections', array('quizid' => $attemptobj->get_quizid(), 'shufflequestions' => 2))) {
+        $nexturl = $attemptobj->attempt_url(null, $page);
+    }
 } else {
     $nexturl = $attemptobj->attempt_url(null, $page);
     if ($scrollpos !== '') {

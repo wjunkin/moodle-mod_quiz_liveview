@@ -129,8 +129,8 @@ if ($attemptobj->is_last_page($page)) {
 } else {
     $nextpage = $page + 1;
 }
-if($DB->record_exists('quiz_sections', array('quizid' => $attemptobj->get_quizid(), 'shufflequestions' => 2))) {
-	include_once('./liveview/pollingattempt.php');
+if ($DB->record_exists('quiz_sections', array('quizid' => $attemptobj->get_quizid(), 'shufflequestions' => 2))) {
+    include_once('./liveview/pollingattempt.php');
 }
 
 echo $output->attempt_page($attemptobj, $page, $accessmanager, $messages, $slots, $id, $nextpage);
