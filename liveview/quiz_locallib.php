@@ -154,12 +154,12 @@ function quiz_java_graphupdate($quizid, $cmid) {
         echo "\n myname = x.getAttribute('name');";
         echo "\nvar t=setTimeout(\"replace()\",3000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$cmid.$t."\", true);";
         echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {";
-        echo "\n if((parseInt(http.responseText) != parseInt(myname)) && (myCount < $timeout/3){";
+        echo "\n if((parseInt(http.responseText) != parseInt(myname)) && (myCount < $timeout/3)){";
         echo "\n    document.getElementById('graphIframe').src=\"quizgraphics.php?quizid=".$quizid."\"";
         echo "\n x.setAttribute('name', http.responseText)";
         echo "\n}\n}\n}";
         echo "\n http.send(null);";
-        echo "\nmyCount++;}\n\nreplace();";
+        echo "\nmyCount++}\n\nreplace();";
     echo "\n</script>";
 }
 /**
