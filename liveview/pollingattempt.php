@@ -48,12 +48,19 @@ if ($attemptobj->has_capability('mod/quiz:manage')) {
  * @param int $quizid The id of this quiz instance.
  */
 function quiz_java_questionupdate($quizid) {
+    global $DB;
+    if ($configs = $DB->get_record('config', array('name' => 'sessiontimeout'))) {
+        $timeout = intval($configs->value);
+    } else {
+        $timeout = 7200;
+    }
     echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";\nvar myCount=0;
         \n\nif(navigator.appName == \"Microsoft Internet Explorer\")
         {\nhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n} else {\nhttp = new XMLHttpRequest();}";
     echo "\n\nfunction replace() {\nvar t=setTimeout(\"replace()\",3000)";
     echo "\nhttp.open(\"GET\", \"liveview/current_question.php?quizid=".$quizid."\", true);";
-    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {\n\nif(http.responseText != x && myCount > 1){\n";
+    echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {";
+    echo "\n\nif(http.responseText != x && myCount > 1 && myCount < $timeout/3){\n";
     echo "window.location = window.location.href+'&x';\n";
     echo "}\nx=http.responseText;}\n}\nhttp.send(null);\nmyCount++;}\n\nreplace();\n</script>";
 }

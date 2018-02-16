@@ -138,22 +138,28 @@ function quiz_show_current_question_id($quizid) {
  * @param int $cmid The id in the course_modules table for this quiz.
  */
 function quiz_java_graphupdate($quizid, $cmid) {
+    global $DB;
+    if ($configs = $DB->get_record('config', array('name' => 'sessiontimeout'))) {
+        $timeout = intval($configs->value);
+    } else {
+        $timeout = 7200;
+    }
     echo "\n<div id='timemodified' name='-1'></div>";
-    echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";
+    echo "\n\n<script type=\"text/javascript\">\nvar http = false;\nvar x=\"\";\nvar myCount=0;
             \n\nif(navigator.appName == \"Microsoft Internet Explorer\")
             {\nhttp = new ActiveXObject(\"Microsoft.XMLHTTP\");\n} else {\nhttp = new XMLHttpRequest();}";
         echo "\n\nfunction replace() { ";
         $t = '&t='.time();
         echo "\n x=document.getElementById('timemodified');";
         echo "\n myname = x.getAttribute('name');";
-        echo "\nvar t=setTimeout(\"replace()\",10000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$cmid.$t."\", true);";
+        echo "\nvar t=setTimeout(\"replace()\",3000);\nhttp.open(\"GET\", \"graphicshash.php?id=".$cmid.$t."\", true);";
         echo "\nhttp.onreadystatechange=function() {\nif(http.readyState == 4) {";
-        echo "\n if(parseInt(http.responseText) != parseInt(myname)){";
+        echo "\n if((parseInt(http.responseText) != parseInt(myname)) && (myCount < $timeout/3){";
         echo "\n    document.getElementById('graphIframe').src=\"quizgraphics.php?quizid=".$quizid."\"";
         echo "\n x.setAttribute('name', http.responseText)";
         echo "\n}\n}\n}";
         echo "\n http.send(null);";
-        echo "\n}\nreplace();";
+        echo "\nmyCount++;}\n\nreplace();";
     echo "\n</script>";
 }
 /**
